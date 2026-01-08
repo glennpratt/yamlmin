@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  pull_request: {}
+  merge_group: {}
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: nixery.dev/shell/bash/findutils/coreutils/gnutar/gnugrep/gzip/go/golangci-lint/dyff/gnumake/git/nodejs_20
+    steps:
+      - run: cd /__e/node20/bin && ln -s $(which node) node
+
+      - uses: actions/checkout@v4
+
+      - run: make lint --keep-going
+
+      - run: make unit-test
+
+      - run: make integration-test
+
+      - run: make benchmark
