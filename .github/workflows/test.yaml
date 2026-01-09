@@ -8,9 +8,18 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: nixery.dev/shell/bash/findutils/coreutils/gnutar/gnugrep/gzip/go/golangci-lint/dyff/gnumake/git/nodejs_20
+    container:
+      image: nixery.dev/shell/bash/findutils/coreutils/gnutar/gnugrep/gzip/go/golangci-lint/dyff/gnumake/git/nodejs_20
+      volumes:
+        - /tmp:/__e/node20
     steps:
-      - run: cd /__e/node20/bin && ln -s $(which node) node
+      - name: Github Actions hacks...
+        run: |
+          mkdir -p /__e/node20/bin
+          ln -sf $(type -p node) /__e/node20/bin/node
+          ln -sf $(type -p npm) /__e/node20/bin/npm
+          ln -sf $(type -p npx) /__e/node20/bin/npx
+          git config --global --add safe.directory '*'
 
       - uses: actions/checkout@v4
 
