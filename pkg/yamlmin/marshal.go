@@ -12,6 +12,7 @@ package yamlmin
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -21,7 +22,6 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
-	k8syaml "sigs.k8s.io/yaml"
 )
 
 // Options configures the deduplication behavior.
@@ -79,15 +79,15 @@ func MarshalWithOptions(in interface{}, opts Options) ([]byte, error) {
 	return marshalNode(&root, opts)
 }
 
-// K8sMarshal first uses k8s library to marshal respecting JSON tags,
-// then deduplicates and returns minified YAML bytes.
-// See https://pkg.go.dev/sigs.k8s.io/yaml#Marshal and
-// https://pkg.go.dev/sigs.k8s.io/yaml#JSONToYAML
+// K8sMarshal first uses JSON tags to marshal, then deduplicates.
 func K8sMarshal(in interface{}) ([]byte, error) {
-	opts := DefaultOptions()
+	return K8sMarshalWithOptions(in, DefaultOptions())
+}
 
+// K8sMarshalWithOptions accepts custom options and uses JSON tags to marshal.
+func K8sMarshalWithOptions(in interface{}, opts Options) ([]byte, error) {
 	var root yaml.Node
-	y, err := k8syaml.Marshal(in)
+	y, err := json.Marshal(in)
 	if err != nil {
 		return nil, fmt.Errorf("k8s marshaling: %w", err)
 	}
@@ -98,11 +98,9 @@ func K8sMarshal(in interface{}) ([]byte, error) {
 	return marshalNode(&root, opts)
 }
 
-// marshalNode performs the minification process and encoding on a yaml.Node.
 func marshalNode(root *yaml.Node, opts Options) ([]byte, error) {
 	process(root, opts)
 
-	// Use encoder to control indentation
 	indent := opts.Indent
 	if indent <= 0 {
 		indent = 2
@@ -121,10 +119,8 @@ func marshalNode(root *yaml.Node, opts Options) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// process deduplicates a YAML node tree in-place.
 func process(root *yaml.Node, opts Options) {
 	df := newDuplicateFinder(opts)
-	// Set deadline if time limit is positive
 	if opts.TimeLimit > 0 {
 		df.deadline = time.Now().Add(opts.TimeLimit)
 	}
@@ -135,7 +131,6 @@ func process(root *yaml.Node, opts Options) {
 	visited := make(map[uint64]*yaml.Node)
 	df.replaceWithAliases(root, visited, 0)
 
-	// Cleanup: remove anchors that have no aliases pointing to them
 	df.removeUnusedAnchors()
 }
 
@@ -145,7 +140,6 @@ type anchorInfo struct {
 	refCount int
 }
 
-// hasher pool to reduce allocations
 var hasherPool = sync.Pool{
 	New: func() interface{} {
 		return fnv.New64a()
@@ -232,7 +226,6 @@ func newDuplicateFinder(opts Options) *duplicateFinder {
 	}
 }
 
-// isDeadlineExceeded checks if the time limit has been reached.
 func (df *duplicateFinder) isDeadlineExceeded() bool {
 	if !df.deadline.IsZero() && time.Now().After(df.deadline) {
 		return true
@@ -281,7 +274,7 @@ func (df *duplicateFinder) writeNodeToHash(h interface{ Write([]byte) (int, erro
 	switch node.Kind {
 	case yaml.DocumentNode:
 		for _, child := range node.Content {
-			if err := df.writeNodeToHash(h, child, depth+1); err != nil {
+			if err := df.writeNodeToHash(h, child, depth); err != nil {
 				return err
 			}
 		}
@@ -401,7 +394,7 @@ func (df *duplicateFinder) scanNode(node *yaml.Node, depth int) {
 	switch node.Kind {
 	case yaml.DocumentNode:
 		for _, child := range node.Content {
-			df.scanNode(child, depth+1)
+			df.scanNode(child, depth)
 		}
 	case yaml.MappingNode:
 		for i := 1; i < len(node.Content); i += 2 {
@@ -439,7 +432,7 @@ func (df *duplicateFinder) replaceWithAliases(node *yaml.Node, visited map[uint6
 	switch node.Kind {
 	case yaml.DocumentNode:
 		for _, child := range node.Content {
-			df.replaceWithAliases(child, visited, depth+1)
+			df.replaceWithAliases(child, visited, depth)
 		}
 	case yaml.MappingNode:
 		for i := 1; i < len(node.Content); i += 2 {

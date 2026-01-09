@@ -7,7 +7,7 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/glennpratt/yamlmin"
+	"github.com/glennpratt/yamlmin/pkg/yamlmin"
 	"gopkg.in/yaml.v3"
 )
 

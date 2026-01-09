@@ -12,7 +12,7 @@ A Go library and CLI for minifying YAML documents by deduplicating common struct
 ## Installation
 
 ```bash
-go get github.com/glennpratt/yamlmin
+go get github.com/glennpratt/yamlmin/pkg/yamlmin
 ```
 
 ## Usage
@@ -20,7 +20,7 @@ go get github.com/glennpratt/yamlmin
 ### Library
 
 ```go
-import "github.com/glennpratt/yamlmin"
+import "github.com/glennpratt/yamlmin/pkg/yamlmin"
 
 // Simple usage
 minified, err := yamlmin.Marshal(inputStruct)
@@ -36,13 +36,19 @@ minified, err = yamlmin.MarshalWithOptions(inputStruct, opts)
 
 ### CLI
 
+#### Run without installing
 ```bash
-cat input.yaml | go run ./cmd/yaml-minify > minified.yaml
+cat input.yaml | go run github.com/glennpratt/yamlmin@latest > minified.yaml
+```
+
+#### Install
+```bash
+go install github.com/glennpratt/yamlmin@latest
 ```
 
 ## Benchmarks
 
-The project includes a benchmark suite in `minify_test.go` comparing `yamlmin` against `gopkg.in/yaml.v3` and `sigs.k8s.io/yaml`.
+The project includes a benchmark suite in `marshal_test.go` comparing `yamlmin` against `gopkg.in/yaml.v3` and `sigs.k8s.io/yaml`.
 
 | Metric | Note |
 |--------|------|
@@ -53,4 +59,5 @@ The project includes a benchmark suite in `minify_test.go` comparing `yamlmin` a
 The benchmarks are currently designed to run against `testdata/fixture.yaml`. You can run them with:
 
 ```bash
-go test -v -bench=. -benchmem
+go test -v -bench=. -benchmem ./pkg/yamlmin
+```

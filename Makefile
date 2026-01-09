@@ -3,7 +3,7 @@ SHELL := /bin/bash
 
 export CGO_ENABLED := 0
 
-FIXTURE := testdata/fixture.yaml
+FIXTURE := pkg/yamlmin/testdata/fixture.yaml
 
 .PHONY: all
 all: fmt lint-fix test benchmark
@@ -29,13 +29,13 @@ test: unit-test integration-test
 
 .PHONY: unit-test
 unit-test:
-	go test -v
+	go test -v ./...
 
 .PHONY: integration-test
 integration-test:
-	dyff between --set-exit-code $(FIXTURE) <(go run ./cmd/yaml-minify < $(FIXTURE))
+	dyff between --set-exit-code $(FIXTURE) <(go run . < $(FIXTURE))
 	@echo "Integration test passed"
 
 .PHONY: benchmark
 benchmark:
-	go test -bench=. -benchmem
+	go test -bench=. -benchmem ./...
